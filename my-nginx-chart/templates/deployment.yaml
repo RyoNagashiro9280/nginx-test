@@ -1,2 +1,0 @@
-# deployment.yaml の中の containers: の image: の行
-image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
