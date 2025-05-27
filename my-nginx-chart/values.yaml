@@ -2,30 +2,33 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1 # NginxのPodを何個起動するか
+replicaCount: 1
 
 image:
-  repository: nginx       # コンテナイメージのリポジトリ名
-  pullPolicy: IfNotPresent # イメージをプルするポリシー (IfNotPresent, Always, Never)
+  repository: nginx
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"          # コンテナイメージのタグ (例: "1.25.0" とか "latest")
+  tag: "latest"
 
-imagePullSecrets: [] # プライベートリポジトリからイメージをプルする場合に使うSecretの名前
-nameOverride: ""     # チャート名から作られるリソース名を上書きしたい場合
-fullnameOverride: "" #完全にリソース名を指定したい場合 (例: my-nginx-app)
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
-  create: true # ServiceAccountを作るかどうか (falseにしたら下のnameも要らんくなる)
+  create: true
+  # Automatically mount a ServiceAccount's API credentials?
+  automount: true
   # Annotations to add to the service account
   annotations: {}
   # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template.
-  # もし create: false なら、このnameは使われへんけど、既存のServiceAccountを使いたい場合はここに名前を入れる
+  # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {} # Podに付けたいアノテーション
-podLabels: {}      # Podに付けたい追加のラベル
+# This is for setting Kubernetes Annotations to a Pod.
+podAnnotations: {}
+# This is for setting Kubernetes Labels to a Pod.
+podLabels: {}
 
 podSecurityContext: {}
   # fsGroup: 2000
@@ -38,54 +41,50 @@ securityContext: {}
   # runAsNonRoot: true
   # runAsUser: 1000
 
+# This is for setting up a service
 service:
-  type: ClusterIP # Serviceのタイプ (ClusterIP, NodePort, LoadBalancer)
-                 # Ingressを使うならClusterIPでええ
-  port: 80        # Serviceが公開するポート番号
+  # This sets the service type
+  type: ClusterIP
+  # This sets the ports
+  port: 80
 
+# This block is for setting up the ingress
 ingress:
-  enabled: true # Ingressを作るかどうか (falseにしたら下の設定は全部無視される)
-  className: "nginx" # ★使ってるIngress Controllerのクラス名 (例: "nginx")
-  annotations: # Ingressに付けたいアノテーション
-    # kubernetes.io/ingress.class: nginx # 古い書き方やからコメントアウト
-    cert-manager.io/cluster-issuer: letsencrypt-prod # ★Cert-ManagerのClusterIssuer名
-    # nginx.ingress.kubernetes.io/rewrite-target: / # 必要ならリライトルールとか
+  enabled: true
+  className: "nginx" # Use your Ingress Controller's class name
+  annotations: # Annotations for Ingress
+    # kubernetes.io/ingress.class: nginx # Deprecated
+    cert-manager.io/cluster-issuer: letsencrypt-prod # Your Cert-Manager ClusterIssuer
+    # nginx.ingress.kubernetes.io/rewrite-target: / # If needed
   hosts:
-    - host: nqg1t0.com # ★あんたのドメイン名 (Nginxサンプル用)
-                      #   ArgoCD用には argocd.nqg1t0.com を別のIngressで作るか、
-                      #   このチャートをArgoCD用として使うならここを argocd.nqg1t0.com にする
+    - host: nqg1t0.com # Your domain name
       paths:
-        - path: / # 公開するパス
-          pathType: ImplementationSpecific # または Prefix
-          # backend: # (これは普通Helmのテンプレートが自動で設定するから書かんでもええ)
+        - path: / # Path to expose
+          pathType: ImplementationSpecific # Or Prefix
+          # backend: # Usually auto-configured by Helm templates
           #   service:
-          #     name: chart-example.local # サービス名
+          #     name: chart-example.local
           #     port:
-          #       number: 80 # サービスポート
-    # もし複数のホスト名で公開したいなら、こんな感じで追加できる
+          #       number: 80
+    # If you want to expose multiple hostnames
     # - host: another.example.com
     #   paths:
     #     - path: /
     #       pathType: ImplementationSpecific
-  tls: # TLS (HTTPS) の設定
+  tls: # TLS (HTTPS) settings
    # Secrets must be manually created in the namespace or cert-manager will provision them.
-   # Cert-Managerを使うなら、ここはそのままでOK。secretNameはIngressのホスト名とかから自動で作られることが多い。
-   # もし自分でSecret名を指定したい場合は、cert-manager.io/acme-challenge-type: http01 と一緒に
-   # ingress.annotations に cert-manager.io/secret-name: my-custom-secret-name みたいに書くか、
-   # あるいはここのsecretNameを直接指定する (ただ、Cert-Managerはホスト名毎にSecretを作ることが多い)
-   - secretName: nginx-sample-tls-prod # ★証明書を保存するSecretの名前 (nqg1t0.com用)
-                                      # ArgoCD用なら argocd-server-tls とか
+   - secretName: nginx-sample-tls-prod # Secret name for the certificate
      hosts:
-       - nqg1t0.com # ★TLSを有効にするホスト名 (上のhosts.hostと同じにする)
+       - nqg1t0.com # Hostname for TLS
    # - secretName: another-example-com-tls
    #   hosts:
    #     - another.example.com
 
-resources: {} # Podのリソース要求と制限
+resources: {} # Resource requests and limits for Pods
   # We usually recommend not to specify default resources and to leave this as a conscious
-  # choice for the user. This also increases chances charts run on environments with
-  # constrained resources, such as Minikube. If you do specify resources, uncomment the
-  # following lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
   # limits:
   #   cpu: 100m
   #   memory: 128Mi
@@ -93,15 +92,39 @@ resources: {} # Podのリソース要求と制限
   #   cpu: 100m
   #   memory: 128Mi
 
+# This is to setup the liveness and readiness probes
+livenessProbe:
+  httpGet:
+    path: /
+    port: http
+readinessProbe:
+  httpGet:
+    path: /
+    port: http
+
+# This section is for setting up autoscaling
 autoscaling:
-  enabled: false # HorizontalPodAutoscaler (HPA) を使うかどうか
+  enabled: false
   minReplicas: 1
-  maxReplicas: 10
+  maxReplicas: 100 # Changed from 10 to 100 as per helm create default
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector: {} # Podを特定のノードに配置したい場合
+# Additional volumes on the output Deployment definition.
+volumes: []
+# - name: foo
+#   secret:
+#     secretName: mysecret
+#     optional: false
 
-tolerations: [] #特定のTaintが付いたノードにもPodを配置できるようにする場合
+# Additional volumeMounts on the output Deployment definition.
+volumeMounts: []
+# - name: foo
+#   mountPath: "/etc/foo"
+#   readOnly: true
 
-affinity: {} # PodのAffinity/Anti-affinity設定
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
