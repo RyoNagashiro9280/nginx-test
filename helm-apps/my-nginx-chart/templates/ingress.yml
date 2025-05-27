@@ -4,8 +4,8 @@ kind: Ingress
 metadata:
   name: {{ .Release.Name }}-nginx-ingress
   labels: # ← ここのブロック
-    app: my-nginx-app # ← 例えばこんな感じで直接書く
-    release: {{ .Release.Name }} # Helmのリリース名を入れるとか
+    app: {{ .Chart.Name }} # ← chartの名前を使う (例: my-nginx-chart)
+    release: {{ .Release.Name }} # ← Helmのリリース名を使う
     # {{- include "my-nginx-chart.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod # 本番用Issuer
