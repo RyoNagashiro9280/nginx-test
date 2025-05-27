@@ -1,0 +1,24 @@
+# values.yaml の例
+replicaCount: 1 # Podの数
+
+image:
+  repository: nginx # イメージのリポジトリ
+  pullPolicy: IfNotPresent
+  tag: "latest" # イメージのタグ (これをCIで更新するイメージや)
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true # Ingressを作るかどうか
+  className: "nginx" # 前に設定したIngress Class
+  hosts:
+    - host: nqg1t0.com # あんたのドメイン
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+   - secretName: nginx-sample-tls-prod # 本番用証明書のSecret名 (前に作ったやつ)
+     hosts:
+       - nqg1t0.com
