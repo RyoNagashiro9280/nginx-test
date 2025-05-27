@@ -2,9 +2,11 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "my-nginx-chart.fullname" . }}-ingress
-  labels:
-    {{- include "my-nginx-chart.labels" . | nindent 4 }}
+  name: {{ .Release.Name }}-nginx-ingress
+  labels: # ← ここのブロック
+    app: my-nginx-app # ← 例えばこんな感じで直接書く
+    release: {{ .Release.Name }} # Helmのリリース名を入れるとか
+    # {{- include "my-nginx-chart.labels" . | nindent 4 }}
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod # 本番用Issuer
 spec:
