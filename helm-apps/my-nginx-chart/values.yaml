@@ -1,24 +1,107 @@
-# values.yaml の例
-replicaCount: 1 # Podの数
+# Default values for my-nginx-chart.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1 # NginxのPodを何個起動するか
 
 image:
-  repository: nginx # イメージのリポジトリ
-  pullPolicy: IfNotPresent
-  tag: "latest" # イメージのタグ (これをCIで更新するイメージや)
+  repository: nginx       # コンテナイメージのリポジトリ名
+  pullPolicy: IfNotPresent # イメージをプルするポリシー (IfNotPresent, Always, Never)
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "latest"          # コンテナイメージのタグ (例: "1.25.0" とか "latest")
+
+imagePullSecrets: [] # プライベートリポジトリからイメージをプルする場合に使うSecretの名前
+nameOverride: ""     # チャート名から作られるリソース名を上書きしたい場合
+fullnameOverride: "" #完全にリソース名を指定したい場合 (例: my-nginx-app)
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true # ServiceAccountを作るかどうか (falseにしたら下のnameも要らんくなる)
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template.
+  # もし create: false なら、このnameは使われへんけど、既存のServiceAccountを使いたい場合はここに名前を入れる
+  name: ""
+
+podAnnotations: {} # Podに付けたいアノテーション
+podLabels: {}      # Podに付けたい追加のラベル
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
 
 service:
-  type: ClusterIP
-  port: 80
+  type: ClusterIP # Serviceのタイプ (ClusterIP, NodePort, LoadBalancer)
+                 # Ingressを使うならClusterIPでええ
+  port: 80        # Serviceが公開するポート番号
 
 ingress:
-  enabled: true # Ingressを作るかどうか
-  className: "nginx" # 前に設定したIngress Class
+  enabled: true # Ingressを作るかどうか (falseにしたら下の設定は全部無視される)
+  className: "nginx" # ★使ってるIngress Controllerのクラス名 (例: "nginx")
+  annotations: # Ingressに付けたいアノテーション
+    # kubernetes.io/ingress.class: nginx # 古い書き方やからコメントアウト
+    cert-manager.io/cluster-issuer: letsencrypt-prod # ★Cert-ManagerのClusterIssuer名
+    # nginx.ingress.kubernetes.io/rewrite-target: / # 必要ならリライトルールとか
   hosts:
-    - host: nqg1t0.com # あんたのドメイン
+    - host: nqg1t0.com # ★あんたのドメイン名 (Nginxサンプル用)
+                      #   ArgoCD用には argocd.nqg1t0.com を別のIngressで作るか、
+                      #   このチャートをArgoCD用として使うならここを argocd.nqg1t0.com にする
       paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls:
-   - secretName: nginx-sample-tls-prod # 本番用証明書のSecret名 (前に作ったやつ)
+        - path: / # 公開するパス
+          pathType: ImplementationSpecific # または Prefix
+          # backend: # (これは普通Helmのテンプレートが自動で設定するから書かんでもええ)
+          #   service:
+          #     name: chart-example.local # サービス名
+          #     port:
+          #       number: 80 # サービスポート
+    # もし複数のホスト名で公開したいなら、こんな感じで追加できる
+    # - host: another.example.com
+    #   paths:
+    #     - path: /
+    #       pathType: ImplementationSpecific
+  tls: # TLS (HTTPS) の設定
+   # Secrets must be manually created in the namespace or cert-manager will provision them.
+   # Cert-Managerを使うなら、ここはそのままでOK。secretNameはIngressのホスト名とかから自動で作られることが多い。
+   # もし自分でSecret名を指定したい場合は、cert-manager.io/acme-challenge-type: http01 と一緒に
+   # ingress.annotations に cert-manager.io/secret-name: my-custom-secret-name みたいに書くか、
+   # あるいはここのsecretNameを直接指定する (ただ、Cert-Managerはホスト名毎にSecretを作ることが多い)
+   - secretName: nginx-sample-tls-prod # ★証明書を保存するSecretの名前 (nqg1t0.com用)
+                                      # ArgoCD用なら argocd-server-tls とか
      hosts:
-       - nqg1t0.com
+       - nqg1t0.com # ★TLSを有効にするホスト名 (上のhosts.hostと同じにする)
+   # - secretName: another-example-com-tls
+   #   hosts:
+   #     - another.example.com
+
+resources: {} # Podのリソース要求と制限
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with
+  # constrained resources, such as Minikube. If you do specify resources, uncomment the
+  # following lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false # HorizontalPodAutoscaler (HPA) を使うかどうか
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {} # Podを特定のノードに配置したい場合
+
+tolerations: [] #特定のTaintが付いたノードにもPodを配置できるようにする場合
+
+affinity: {} # PodのAffinity/Anti-affinity設定
